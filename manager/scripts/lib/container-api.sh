@@ -1,26 +1,42 @@
 #!/bin/bash
 # container-api.sh - Container runtime API helper
 # Provides functions to create/manage sibling containers via the host's
-# container runtime socket (Docker or Podman compatible).
+# container runtime (Docker or Podman compatible).
 #
-# The Manager container must be started with:
-#   -v /var/run/docker.sock:/var/run/docker.sock --security-opt label=disable
-# or (Podman rootful):
-#   -v /run/podman/podman.sock:/var/run/docker.sock --security-opt label=disable
+# Supported connection modes:
+#   1. Unix socket (default): mount socket into container
+#      -v /var/run/docker.sock:/var/run/docker.sock --security-opt label=disable
+#   2. TCP via DOCKER_HOST: set DOCKER_HOST=tcp://172.17.0.1:2375
+#      (useful with Colima/virtiofs where socket mounting is unsupported)
 #
 # Usage:
 #   source /opt/hiclaw/scripts/lib/container-api.sh
-#   container_api_available           # returns 0 if socket is mounted
+#   container_api_available           # returns 0 if API is reachable
 #   container_create_worker "alice"   # create and start a worker container
 #   container_stop_worker "alice"     # stop a worker container
 #   container_remove_worker "alice"   # remove a worker container
 #   container_logs_worker "alice"     # get worker container logs
 
+# Detect container runtime connection method:
+#   1. DOCKER_HOST=tcp://host:port  -> TCP mode (e.g. socat forwarding)
+#   2. Unix socket file             -> Socket mode (default)
 CONTAINER_SOCKET="${HICLAW_CONTAINER_SOCKET:-/var/run/docker.sock}"
-CONTAINER_API_BASE="http://localhost"
 WORKER_IMAGE="${HICLAW_WORKER_IMAGE:-hiclaw/worker-agent:latest}"
 COPAW_WORKER_IMAGE="${HICLAW_COPAW_WORKER_IMAGE:-hiclaw/copaw-worker:latest}"
 WORKER_CONTAINER_PREFIX="hiclaw-worker-"
+
+# _CONTAINER_MODE: "tcp" or "socket"
+# _CONTAINER_CURL_ARGS: extra curl args for the chosen mode
+# _CONTAINER_API_BASE: base URL for Docker API requests
+if [[ "${DOCKER_HOST:-}" == tcp://* ]]; then
+    _CONTAINER_MODE="tcp"
+    _CONTAINER_API_BASE="http://${DOCKER_HOST#tcp://}"
+    _CONTAINER_CURL_ARGS=""
+else
+    _CONTAINER_MODE="socket"
+    _CONTAINER_API_BASE="http://localhost"
+    _CONTAINER_CURL_ARGS="--unix-socket ${CONTAINER_SOCKET}"
+fi
 
 _log() {
     echo "[hiclaw-container $(date '+%Y-%m-%d %H:%M:%S')] $1"
@@ -31,15 +47,17 @@ _api() {
     local path="$2"
     local data="${3:-}"
     if [ -n "${data}" ]; then
-        curl -s --unix-socket "${CONTAINER_SOCKET}" \
+        # shellcheck disable=SC2086
+        curl -s ${_CONTAINER_CURL_ARGS} \
             -X "${method}" \
             -H 'Content-Type: application/json' \
             -d "${data}" \
-            "${CONTAINER_API_BASE}${path}"
+            "${_CONTAINER_API_BASE}${path}"
     else
-        curl -s --unix-socket "${CONTAINER_SOCKET}" \
+        # shellcheck disable=SC2086
+        curl -s ${_CONTAINER_CURL_ARGS} \
             -X "${method}" \
-            "${CONTAINER_API_BASE}${path}"
+            "${_CONTAINER_API_BASE}${path}"
     fi
 }
 
@@ -48,23 +66,25 @@ _api_code() {
     local path="$2"
     local data="${3:-}"
     if [ -n "${data}" ]; then
-        curl -s -o /dev/null -w '%{http_code}' --unix-socket "${CONTAINER_SOCKET}" \
+        # shellcheck disable=SC2086
+        curl -s -o /dev/null -w '%{http_code}' ${_CONTAINER_CURL_ARGS} \
             -X "${method}" \
             -H 'Content-Type: application/json' \
             -d "${data}" \
-            "${CONTAINER_API_BASE}${path}"
+            "${_CONTAINER_API_BASE}${path}"
     else
-        curl -s -o /dev/null -w '%{http_code}' --unix-socket "${CONTAINER_SOCKET}" \
+        # shellcheck disable=SC2086
+        curl -s -o /dev/null -w '%{http_code}' ${_CONTAINER_CURL_ARGS} \
             -X "${method}" \
-            "${CONTAINER_API_BASE}${path}"
+            "${_CONTAINER_API_BASE}${path}"
     fi
 }
 
-# Check if container runtime socket is available
+# Check if container runtime API is available (socket or TCP)
 # This function is designed to work correctly in both strict mode (set -euo pipefail)
 # and non-strict mode. It uses a subshell for the API check to prevent exit on errors.
 container_api_available() {
-    if [ ! -S "${CONTAINER_SOCKET}" ]; then
+    if [ "${_CONTAINER_MODE}" = "socket" ] && [ ! -S "${CONTAINER_SOCKET}" ]; then
         return 1
     fi
     # Use a subshell to prevent strict mode (set -e) from exiting on curl failures
@@ -99,8 +119,9 @@ _ensure_image() {
     # POST /images/create?fromImage=<ref> streams progress JSON.
     # curl will block until the pull finishes (or fails).
     local pull_output
-    pull_output=$(curl -s --unix-socket "${CONTAINER_SOCKET}" \
-        -X POST "${CONTAINER_API_BASE}/images/create?fromImage=${image}" 2>&1)
+    # shellcheck disable=SC2086
+    pull_output=$(curl -s ${_CONTAINER_CURL_ARGS} \
+        -X POST "${_CONTAINER_API_BASE}/images/create?fromImage=${image}" 2>&1)
 
     # Verify the image is now available
     inspect=$(_api GET "/images/${image}/json" 2>/dev/null)
@@ -483,8 +504,9 @@ PAYLOAD
 
         # Start the container — capture both HTTP status code and response body
         local start_output
-        start_output=$(curl -s -w '\n%{http_code}' --unix-socket "${CONTAINER_SOCKET}" \
-            -X POST "${CONTAINER_API_BASE}/containers/${container_id}/start")
+        # shellcheck disable=SC2086
+        start_output=$(curl -s -w '\n%{http_code}' ${_CONTAINER_CURL_ARGS} \
+            -X POST "${_CONTAINER_API_BASE}/containers/${container_id}/start")
         local start_code
         start_code=$(echo "${start_output}" | tail -1)
         local start_body
