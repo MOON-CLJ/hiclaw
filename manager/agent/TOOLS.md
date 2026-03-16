@@ -58,11 +58,11 @@ Default runtime is set by `HICLAW_DEFAULT_WORKER_RUNTIME` (chosen during install
 
 | Worker Type | Skills | Flags |
 |-------------|--------|-------|
-| Development (coding, DevOps, review) | `github-operations,git-delegation` | `--find-skills` |
-| Data / Analysis | _(default)_ | `--find-skills` |
-| General Purpose | _(default)_ | `--find-skills` |
+| Development (coding, DevOps, review) | `github-operations,git-delegation` | |
+| Data / Analysis | _(default)_ | |
+| General Purpose | _(default)_ | |
 
-> `file-sync` is always auto-included. `--find-skills` lets the Worker discover and install additional skills on-demand. Trim skills that clearly don't apply (e.g., drop `github-operations` for a pure frontend worker).
+> `file-sync` is always auto-included. Trim skills that clearly don't apply (e.g., drop `github-operations` for a pure frontend worker).
 
 ---
 

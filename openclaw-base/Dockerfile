@@ -82,10 +82,6 @@ RUN git clone --depth 1 --single-branch \
 RUN npm install -g mcporter && \
     rm -rf /root/.npm
 
-# Install skills CLI for agent skills ecosystem (skills.sh)
-# This enables workers to discover and install skills from the open agent skills ecosystem
-RUN npm install -g skills && \
-    rm -rf /root/.npm
 
 # Clear proxy env vars (they're only needed during build, not at runtime)
 # Without this, curl in the container would try to use the proxy for localhost

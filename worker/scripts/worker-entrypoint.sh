@@ -64,25 +64,10 @@ done
 mkdir -p "${HOME}/.openclaw"
 ln -sf "${WORKSPACE}/openclaw.json" "${HOME}/.openclaw/openclaw.json"
 
-# Create symlink for skills CLI: ~/.agents/skills -> ~/skills
-# This makes `skills add -g` install skills directly into ~/skills/ (same as file-sync)
-# Skills in ~/skills/ will be synced to MinIO and persist across container restarts
+# Ensure skills directory exists (for Manager-pushed skills like file-sync, mcporter)
 mkdir -p "${HOME}/skills"
-mkdir -p "${HOME}/.agents"
-# Clean up circular symlink from previous buggy ln -sf (which followed
-# the existing symlink-to-directory and created skills/skills -> skills inside it).
-[ -L "${HOME}/skills/skills" ] && rm -f "${HOME}/skills/skills"
-# Use -n (--no-dereference) so ln replaces an existing symlink-to-directory
-# instead of creating a nested symlink inside the target directory.
-ln -sfn "${HOME}/skills" "${HOME}/.agents/skills"
 
 log "Worker config pulled successfully"
-
-# Restore skills from MinIO if skills directory is empty but skills-lock.json exists
-if [ -f "${WORKSPACE}/skills-lock.json" ] && [ -z "$(ls -A ${WORKSPACE}/skills 2>/dev/null | grep -v file-sync)" ]; then
-    log "Found skills-lock.json but skills directory is empty, restoring skills..."
-    cd "${WORKSPACE}" && skills experimental_install -y 2>/dev/null || log "Warning: skills restore failed, will need to reinstall"
-fi
 
 # Ensure hiclaw-sync symlink is functional (wrapper script calls workspace path)
 ln -sf "${WORKSPACE}/skills/file-sync/scripts/hiclaw-sync.sh" /usr/local/bin/hiclaw-sync 2>/dev/null || true

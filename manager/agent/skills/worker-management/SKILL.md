@@ -47,11 +47,11 @@ bash /opt/hiclaw/agent/skills/worker-management/scripts/create-worker.sh \
 
 | Worker Type | Skills | Flags |
 |-------------|--------|-------|
-| Development (coding, DevOps, review) | `github-operations,git-delegation` | `--find-skills` |
-| Data / Analysis | _(default)_ | `--find-skills` |
-| General Purpose | _(default)_ | `--find-skills` |
+| Development (coding, DevOps, review) | `github-operations,git-delegation` | |
+| Data / Analysis | _(default)_ | |
+| General Purpose | _(default)_ | |
 
-> `file-sync` is auto-included. `--find-skills` lets the Worker discover additional skills on-demand. Trim skills that clearly don't apply.
+> `file-sync` is auto-included. Trim skills that clearly don't apply.
 
 ---
 
@@ -100,8 +100,7 @@ Before anything else, determine which runtime to use based on the admin's reques
 
 By the time you reach this skill, the admin has already confirmed:
 - Worker name, role description, and any custom model/MCP server preferences
-- `enable_find_skills`: true/false
-- `skills_api_url`: custom URL or empty (uses `${HICLAW_SKILLS_API_URL:-https://skills.sh}` as default)
+
 
 These are determined during the Task Workflow Step 0 / Step 4 interaction in AGENTS.md. Do not re-ask.
 
@@ -170,7 +169,7 @@ Pass the matched skills as a comma-separated string to `--skills`, e.g. `file-sy
 The script handles everything: Matrix registration, room creation, Higress consumer, AI/MCP authorization, config generation, MinIO sync, skills push, and container startup.
 
 ```bash
-bash /opt/hiclaw/agent/skills/worker-management/scripts/create-worker.sh --name <WORKER_NAME> [--model <MODEL_ID>] [--mcp-servers s1,s2] [--skills s1,s2] [--find-skills] [--skills-api-url <URL>] [--remote] [--runtime openclaw|copaw]
+bash /opt/hiclaw/agent/skills/worker-management/scripts/create-worker.sh --name <WORKER_NAME> [--model <MODEL_ID>] [--mcp-servers s1,s2] [--skills s1,s2] [--remote] [--runtime openclaw|copaw]
 ```
 
 **Parameters**:
@@ -178,8 +177,6 @@ bash /opt/hiclaw/agent/skills/worker-management/scripts/create-worker.sh --name 
 - `--model`: optional, bare model name (e.g. `qwen3.5-plus`). Defaults to `${HICLAW_DEFAULT_MODEL}`
 - `--mcp-servers`: optional, comma-separated MCP server names. Defaults to all existing MCP servers
 - `--skills`: comma-separated skill names determined in Step 1.5 (e.g. `file-sync,github-operations`). Defaults to `file-sync` if omitted. `file-sync` is always included automatically
-- `--find-skills`: enable find-skills capability (allows Worker to discover and install skills from skills.sh or private registry)
-- `--skills-api-url`: custom skills registry URL (default: https://skills.sh). Only used when `--find-skills` is set
 - `--remote`: force output install command instead of starting container locally
 - `--runtime`: `openclaw` (default) or `copaw`. Use `copaw` for Python-based Workers that run via `pip install copaw-worker` instead of a container image
 **Runtime: `copaw`**

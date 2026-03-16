@@ -12,17 +12,11 @@ description: Assign and track tasks for Worker Agents. Use when the human admin 
 1. Check existing Workers and workload: `cat ~/workers-registry.json && bash /opt/hiclaw/agent/skills/task-management/scripts/manage-state.sh --action list`
 2. Present options to admin:
    - **Option A** — Assign to an idle existing Worker (list name + role + status)
-   - **Option B** — Create a new Worker (suggest name/role/skills/model based on task type; ask about find-skills, see Step 4)
+   - **Option B** — Create a new Worker (suggest name/role/skills/model based on task type)
    - **Option C** — Handle it yourself (note: broader system access than Workers; use isolated Worker for untrusted inputs)
 3. Act on choice: A → container check then assign; B → create Worker then assign; C → work directly (no task directory needed)
 
 **Skip Step 0 when**: admin explicitly names a Worker, says "do it yourself", or it's a heartbeat-triggered infinite task. In YOLO mode, decide autonomously.
-
-**Step 4 — Find-Skills (only when creating a new Worker):**
-
-Check default: `echo "${HICLAW_SKILLS_API_URL:-https://skills.sh}"`
-
-Ask admin: enable find-skills (recommended) or disable; optionally provide custom registry URL. Pass to `create-worker.sh` via `--find-skills` / `--skills-api-url`.
 
 ---
 
@@ -61,8 +55,7 @@ Ask admin: enable find-skills (recommended) or disable; optionally provide custo
 4. Notify Worker in their Room:
    ```
    @{worker}:{domain} New task [{task-id}]: {title}. Use your file-sync skill to pull the spec: hiclaw/hiclaw-storage/shared/tasks/{task-id}/spec.md. @mention me when complete.
-   ```
-   - If Worker has `find-skills` skill (`test -d /root/hiclaw-fs/agents/{worker}/skills/find-skills`), add: `💡 Run \`skills find <keyword>\` if you need additional capabilities.`
+    ```
 5. Add to `state.json`:
    ```bash
    bash /opt/hiclaw/agent/skills/task-management/scripts/manage-state.sh \
